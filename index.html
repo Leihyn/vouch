@@ -21,19 +21,21 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);padding:0 20px;
     font:15px/1.62 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:940px;margin:0 auto;padding-block:44px 80px}
+  .wrap{max-width:860px;margin:0 auto;padding-block:44px 80px}
   header{border-bottom:2px solid var(--ind);padding-bottom:18px;margin-bottom:24px}
   h1{font-size:30px;margin:0 0 5px;letter-spacing:-.02em}
   h1 span{color:var(--ind)}
   .sub{color:var(--mut);margin:0}
-  h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--mut);
-     margin:34px 0 10px;font-family:ui-monospace,Menlo,monospace}
+  h2{display:inline-block;font-size:12px;text-transform:uppercase;letter-spacing:.1em;
+     color:var(--ind);margin:38px 0 10px;padding:6px 14px;border:1px solid var(--ind);
+     border-radius:20px;font-family:ui-monospace,Menlo,monospace;background:#fff}
   h2 b{color:var(--ind);font-weight:700}
   p{margin:0 0 12px}
   .lede{font-size:17px}
   .note{color:var(--mut);font-size:13px}
   code,.m{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:12px}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:4px;
+    border-left:4px solid var(--ind);padding:18px;margin-bottom:14px}
   button{font:inherit;font-size:14px;padding:9px 16px;border-radius:6px;cursor:pointer;
     background:var(--ind);color:#fff;border:none;font-weight:600}
   button:hover{filter:brightness(1.08)}
@@ -143,13 +145,13 @@
   <div id="presentOut"></div>
 </div>
 
-<h2>What is actually being trusted</h2>
+<h2>Who learns what</h2>
 <p>
-  The service's root key, and the voucher to answer its one question honestly. Nothing else. The
-  voucher cannot approve a job it was never told about, because it is never told about any job.
-  The service cannot be tricked by a recycled approval, because a discharge is bound to the exact
-  credential it was issued against. And neither of them has to be online when the other acts:
-  the discharge travels with the agent.
+  The service learns that its question was answered, and never what the voucher saw. The voucher
+  learns one predicate and one key, and never the job, the budget, or which service asked. The
+  agent carries both and can read neither. Two things are load-bearing and no more: the root key
+  stays secret, and the voucher answers its question honestly. Neither of them has to be online
+  when the other acts, because the discharge travels with the agent.
 </p>
 <p class="note" id="scope">
   Implemented: macaroon minting and verification over an HMAC-SHA256 chain, third-party caveats
@@ -162,7 +164,7 @@
 
 <footer>
   <p><a href="https://github.com/Leihyn/vouch">Source</a> · <a href="https://x.com/faruukku">@faruukku</a></p>
-  <p class="note">Demonstration keys, generated in your browser. Nothing is transmitted anywhere.</p>
+  <p class="note">All three parties are simulated in this one tab.</p>
 </footer>
 
 </div>
