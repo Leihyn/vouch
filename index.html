@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="ory-verify" content="PASTE_VOUCH_TOKEN_HERE">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="An agent gets permission to spend without the party granting it learning what the job is. Working third-party caveats and discharge macaroons, in the browser.">
+<meta name="twitter:creator" content="@faruukku">
+<link rel="me" href="https://x.com/faruukku">
+<link rel="icon" href="/logo.png">
+<meta property="og:title" content="Vouch — permission without disclosure">
+<meta property="og:description" content="The voucher answers one question and never learns the job. The service never talks to the voucher. Third-party caveats, working.">
+<title>Vouch — permission without disclosure</title>
+<style>
+  :root{
+    color-scheme:light;
+    --paper:#f6f7fa; --panel:#fff; --line:#dde1ea; --line2:#eceff5;
+    --ink:#161a22; --mut:#666e7d;
+    --ind:#4f46e5; --teal:#0d9488; --ok:#15803d; --no:#be123c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);padding:0 20px;
+    font:15px/1.62 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:940px;margin:0 auto;padding-block:44px 80px}
+  header{border-bottom:2px solid var(--ind);padding-bottom:18px;margin-bottom:24px}
+  h1{font-size:30px;margin:0 0 5px;letter-spacing:-.02em}
+  h1 span{color:var(--ind)}
+  .sub{color:var(--mut);margin:0}
+  h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--mut);
+     margin:34px 0 10px;font-family:ui-monospace,Menlo,monospace}
+  h2 b{color:var(--ind);font-weight:700}
+  p{margin:0 0 12px}
+  .lede{font-size:17px}
+  .note{color:var(--mut);font-size:13px}
+  code,.m{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:12px}
+  button{font:inherit;font-size:14px;padding:9px 16px;border-radius:6px;cursor:pointer;
+    background:var(--ind);color:#fff;border:none;font-weight:600}
+  button:hover{filter:brightness(1.08)}
+  button.g{background:#fff;color:var(--ind);border:1px solid var(--line);font-weight:400}
+  button.d{background:#fff;color:var(--no);border:1px solid #f0d3da;font-weight:400}
+  button:disabled{opacity:.34;cursor:not-allowed}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .parties{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .party{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fbfcfe}
+  .party h3{margin:0 0 4px;font-size:13px;letter-spacing:.01em}
+  .party p{margin:0;font-size:12.5px;color:var(--mut);line-height:1.5}
+  .party.a{border-top:3px solid var(--ind)}
+  .party.s{border-top:3px solid var(--teal)}
+  .party.v{border-top:3px solid #b45309}
+  .out{margin-top:13px;padding:13px;background:#fafbfd;border:1px solid var(--line2);
+    border-radius:7px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;word-break:break-all}
+  .k{color:var(--mut);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+  .v2{margin-bottom:11px}.v2:last-child{margin-bottom:0}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;white-space:nowrap}
+  td.m{word-break:break-all}
+  td.cav{white-space:nowrap;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  .pill{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+    padding:2px 9px;border-radius:20px;border:1px solid var(--line);white-space:nowrap}
+  .pill.ok{border-color:var(--ok);color:var(--ok);background:#eefaf1}
+  .pill.no{border-color:var(--no);color:var(--no);background:#fdf0f3}
+  .err{background:#fdf0f3;border:1px solid #f0c7d1;color:var(--no);border-radius:7px;
+    padding:11px;font-size:13.5px;margin-top:11px}
+  .scroll{overflow-x:auto}
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--mut);font-size:13.5px}
+  a{color:var(--ind)}
+  @media(max-width:640px){.parties{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Vou<span>ch</span></h1>
+  <p class="sub">Permission to spend, without the party granting it learning what for.</p>
+</header>
+
+<p class="lede">
+  Before an agent is allowed to spend, something usually has to approve it: a credit check, an
+  allowlist, a compliance desk. Every one of those learns what the agent is doing, because the
+  approval and the job travel together. They do not have to.
+</p>
+<p class="note">
+  A third-party caveat splits them. The service writes into the credential "this is valid only if
+  the voucher confirms X", sealed so only the voucher can read it. The voucher answers X and
+  nothing else. The service never contacts the voucher, the voucher never learns the job, and the
+  discharge it issues works for this one credential and no other. Everything here runs in this
+  tab: HMAC-SHA256 chains and AES-GCM sealing. No server, no node, no wallet.
+</p>
+
+<div class="parties">
+  <div class="party s"><h3>The service</h3><p>Holds the root key. Writes the caveat and checks the
+    result. Never speaks to the voucher.</p></div>
+  <div class="party a"><h3>The agent</h3><p>Holds the credential. Must fetch a discharge before it
+    can spend. Sees both, understands neither.</p></div>
+  <div class="party v"><h3>The voucher</h3><p>Answers one sealed question. Never learns the job,
+    the amount, or the service's key.</p></div>
+</div>
+
+<h2><b>1</b> · The service issues a credential it cannot honour alone</h2>
+<p class="note">
+  The caveat is not a string the agent could edit. It is a sealed blob that only the voucher can
+  open, containing a fresh key and the single question the voucher must answer.
+</p>
+<div class="panel">
+  <div class="row"><button id="issue">Issue a credential</button> <span class="note" id="job"></span></div>
+  <div id="issueOut"></div>
+</div>
+
+<h2><b>2</b> · The agent presents it, and is refused</h2>
+<p class="note">
+  The signature is perfectly valid. It is refused anyway, because a third-party caveat is not
+  satisfied by holding the credential.
+</p>
+<div class="panel">
+  <div class="row"><button id="try" disabled>Present the credential</button></div>
+  <div id="tryOut"></div>
+</div>
+
+<h2><b>3</b> · The voucher discharges it, learning only the question</h2>
+<p class="note">
+  The voucher opens the sealed caveat, sees a predicate and a key, and issues a discharge bound
+  to this credential. What it sees is printed in full below, so you can check what it did not.
+</p>
+<div class="panel">
+  <div class="row"><button id="disc" disabled>Ask the voucher</button></div>
+  <div id="discOut"></div>
+</div>
+
+<h2><b>4</b> · Present both, then try to abuse the discharge</h2>
+<p class="note">
+  With the discharge attached the credential works. Then two abuses: reuse that discharge on a
+  different job, and forge one outright.
+</p>
+<div class="panel">
+  <div class="row">
+    <button id="present" disabled>Present credential + discharge</button>
+    <button class="d" id="reuse" disabled>Abuse: reuse it on another job</button>
+    <button class="d" id="forge" disabled>Abuse: forge a discharge</button>
+  </div>
+  <div id="presentOut"></div>
+</div>
+
+<h2>What is actually being trusted</h2>
+<p>
+  The service's root key, and the voucher to answer its one question honestly. Nothing else. The
+  voucher cannot approve a job it was never told about, because it is never told about any job.
+  The service cannot be tricked by a recycled approval, because a discharge is bound to the exact
+  credential it was issued against. And neither of them has to be online when the other acts:
+  the discharge travels with the agent.
+</p>
+<p class="note" id="scope">
+  Implemented: macaroon minting and verification over an HMAC-SHA256 chain, third-party caveats
+  with an AES-GCM sealed caveat identifier, discharge macaroon issuance, and cryptographic
+  binding of a discharge to one root credential. Not implemented: payment, chained third-party
+  caveats where a discharge itself carries one, caveat expiry, and key distribution between
+  service and voucher, which is assumed here to have happened already. This page proves the
+  authorization mechanism; it moves no money and contacts no network.
+</p>
+
+<footer>
+  <p><a href="https://github.com/Leihyn/vouch">Source</a> · <a href="https://x.com/faruukku">@faruukku</a></p>
+  <p class="note">Demonstration keys, generated in your browser. Nothing is transmitted anywhere.</p>
+</footer>
+
+</div>
+
+<script type="module">
+const $=s=>document.getElementById(s);
+const te=new TextEncoder(), tdd=new TextDecoder();
+const b2h=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+const h2b=h=>Uint8Array.from(h.match(/../g).map(x=>parseInt(x,16)));
+const cat=(...a)=>{const t=new Uint8Array(a.reduce((n,x)=>n+x.length,0));let o=0;for(const x of a){t.set(x,o);o+=x.length;}return t;};
+const hmac=async(k,...m)=>{const key=await crypto.subtle.importKey("raw",k,{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC",key,cat(...m)));};
+const rnd=n=>{const b=new Uint8Array(n);crypto.getRandomValues(b);return b;};
+const cut=(s,n=26)=>s.length>n?s.slice(0,n)+"…":s;
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+const aesKey=raw=>crypto.subtle.importKey("raw",raw,"AES-GCM",false,["encrypt","decrypt"]);
+async function seal(shared,obj){const iv=rnd(12);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},await aesKey(shared),te.encode(JSON.stringify(obj))));
+  return b2h(cat(iv,ct));}
+async function unseal(shared,cid){const b=h2b(cid);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b.slice(0,12)},await aesKey(shared),b.slice(12));
+  return JSON.parse(tdd.decode(pt));}
+const chainSig=async(root,id,caveats)=>{let s=await hmac(root,te.encode(id));
+  for(const c of caveats) s=await hmac(s,te.encode(c)); return s;};
+const bindTo=async(rootSig,d)=>b2h(await hmac(h2b(rootSig),h2b(d.sig)));
+
+const WORLD={svcRoot:rnd(32),shared:rnd(32)};
+let JOB=null, M=null, D=null, n=0;
+const PREDICATE="agent has posted a bond of 50,000 sats";
+
+$("issue").onclick=async()=>{
+  try{
+    const jobId="job-"+(1000+Math.floor(Math.random()*9000));
+    const caveatKey=rnd(32);
+    const cid=await seal(WORLD.shared,{k:b2h(caveatKey),predicate:PREDICATE});
+    M={id:`vouch:v1:${jobId}`,caveats:["service = inference","budget <= 50000 sats","3rd-party: voucher | "+cid]};
+    M.sig=b2h(await chainSig(WORLD.svcRoot,M.id,M.caveats));
+    JOB={jobId,caveatKey,cid}; D=null;
+    $("job").textContent=jobId;
+    $("issueOut").innerHTML=`<div class="out">
+      <div class="k">Credential identifier</div><div class="v2">${esc(M.id)}</div>
+      ${M.caveats.map((c,i)=>`<div class="k">Caveat ${i+1}${i===2?" — third party, sealed":""}</div>
+        <div class="v2">${esc(i===2?c.slice(0,24)+cut(c.slice(24),52):c)}</div>`).join("")}
+      <div class="k">Signature</div><div class="v2">${M.sig}</div></div>
+      <p class="note" style="margin-top:10px">The third caveat is ciphertext. The agent holding it
+      cannot read it, cannot edit it without breaking the chain, and cannot satisfy it alone.</p>`;
+    $("try").disabled=false;
+    for(const b of ["disc","present","reuse","forge"]) $(b).disabled=true;
+    $("tryOut").innerHTML=""; $("discOut").innerHTML=""; $("presentOut").innerHTML="";
+  }catch(e){ $("issueOut").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+};
+
+async function verify(m,discharges){
+  if(b2h(await chainSig(WORLD.svcRoot,m.id,m.caveats))!==m.sig) return {ok:false,why:"root chain does not verify"};
+  for(const c of m.caveats){
+    if(!c.startsWith("3rd-party:")) continue;
+    const id=c.split("| ")[1];
+    const d=discharges.find(x=>x.id===id);
+    if(!d) return {ok:false,why:"no discharge presented for the third-party caveat"};
+    let payload;
+    try{ payload=await unseal(WORLD.shared,id); }catch{ return {ok:false,why:"sealed caveat is corrupt"}; }
+    if(b2h(await chainSig(h2b(payload.k),d.id,d.caveats))!==d.sig)
+      return {ok:false,why:"discharge signature does not verify"};
+    if(d.bound!==await bindTo(m.sig,d))
+      return {ok:false,why:"discharge is not bound to this credential"};
+  }
+  return {ok:true};
+}
+
+const verdict=r=>`<div class="out"><div class="k">Service decision</div>
+  <div class="v2"><span class="pill ${r.ok?"ok":"no"}">${r.ok?"accepted":"refused"}</span>
+  ${r.ok?"":" &nbsp;"+esc(r.why)}</div></div>`;
+
+$("try").onclick=async()=>{
+  try{
+    const r=await verify(M,[]);
+    const chain=b2h(await chainSig(WORLD.svcRoot,M.id,M.caveats))===M.sig;
+    $("tryOut").innerHTML=`<div class="out">
+      <div class="k">Signature chain</div><div class="v2"><span class="pill ${chain?"ok":"no"}">${chain?"valid":"invalid"}</span></div>
+      <div class="k">Third-party caveat satisfied</div><div class="v2"><span class="pill no">no</span></div></div>
+      ${verdict(r)}
+      <p class="note" style="margin-top:10px">Holding a valid credential is not the same as
+      satisfying it. This is the distinction a first-party caveat cannot express.</p>`;
+    $("disc").disabled=false;
+  }catch(e){ $("tryOut").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+};
+
+$("disc").onclick=async()=>{
+  try{
+    const seen=await unseal(WORLD.shared,JOB.cid);
+    const d={id:JOB.cid,caveats:["checked = bond ledger","issued = "+new Date().toISOString().slice(0,19)+"Z"]};
+    d.sig=b2h(await chainSig(h2b(seen.k),d.id,d.caveats));
+    d.bound=await bindTo(M.sig,d);
+    D=d;
+    const jobLeak=JSON.stringify(seen).includes(JOB.jobId);
+    const budgetLeak=JSON.stringify(seen).includes("50000 sats") && JSON.stringify(seen).includes("budget");
+    $("discOut").innerHTML=`<div class="scroll"><table>
+      <tr><th>What the voucher sees, in full</th><th></th></tr>
+      <tr><td>question to answer</td><td class="m">${esc(seen.predicate)}</td></tr>
+      <tr><td>key to sign the answer with</td><td class="m">${cut(seen.k,40)}</td></tr>
+      </table></div>
+      <div class="scroll" style="margin-top:12px"><table>
+      <tr><th>What the voucher does not see</th><th></th></tr>
+      <tr><td>the job identifier</td><td><span class="pill ${jobLeak?"no":"ok"}">${jobLeak?"leaked":"not present"}</span></td></tr>
+      <tr><td>the budget caveat</td><td><span class="pill ${budgetLeak?"no":"ok"}">${budgetLeak?"leaked":"not present"}</span></td></tr>
+      <tr><td>the service's root key</td><td><span class="pill ok">not present</span></td></tr>
+      <tr><td>which service asked</td><td><span class="pill ok">not present</span></td></tr>
+      </table></div>
+      <div class="out" style="margin-top:12px">
+      <div class="k">Discharge issued</div><div class="v2">${cut(d.sig,44)}</div>
+      <div class="k">Bound to this credential</div><div class="v2">${cut(d.bound,44)}</div></div>
+      <p class="note" style="margin-top:10px">The voucher answered a question about the agent. It
+      could not have approved this particular job, because it was never shown one.</p>`;
+    $("present").disabled=false;
+  }catch(e){ $("discOut").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+};
+
+$("present").onclick=async()=>{
+  try{
+    const r=await verify(M,[D]);
+    $("presentOut").innerHTML=`<div class="out">
+      <div class="k">Credential</div><div class="v2">${esc(M.id)}</div>
+      <div class="k">Discharge</div><div class="v2">${cut(D.sig,44)}</div></div>
+      ${verdict(r)}
+      <p class="note" style="margin-top:10px">The service checked the chain, opened the sealed
+      caveat, verified the discharge under the key it had sealed in, and checked the binding. It
+      never contacted the voucher.</p>`;
+    $("reuse").disabled=false; $("forge").disabled=false;
+  }catch(e){ $("presentOut").innerHTML=`<div class="err">${esc(e.message)}</div>`; }
+};
+
+$("reuse").onclick=async()=>{
+  try{
+    const other={id:`vouch:v1:job-${1000+Math.floor(Math.random()*9000)}`,caveats:[...M.caveats]};
+    other.sig=b2h(await chainSig(WORLD.svcRoot,other.id,other.caveats));
+    const r=await verify(other,[D]);
+    $("presentOut").innerHTML+=`<div class="scroll" style="margin-top:12px"><table>
+      <tr><th>Abuse</th><th>Attach this discharge to a different job</th></tr>
+      <tr><td>other credential</td><td class="m">${esc(other.id)}</td></tr>
+      <tr><td>its own chain</td><td><span class="pill ok">valid</span></td></tr>
+      <tr><td>discharge binding</td><td class="m">computed from the <em>other</em> credential's signature, so it no longer matches</td></tr>
+      <tr><td>result</td><td><span class="pill ${r.ok?"ok":"no"}">${r.ok?"accepted — DEFECT":"refused"}</span> ${esc(r.why||"")}</td></tr>
+      </table></div>`;
+  }catch(e){ $("presentOut").innerHTML+=`<div class="err">${esc(e.message)}</div>`; }
+};
+
+$("forge").onclick=async()=>{
+  try{
+    const fake={id:JOB.cid,caveats:["checked = nothing at all"]};
+    fake.sig=b2h(await chainSig(rnd(32),fake.id,fake.caveats));
+    fake.bound=await bindTo(M.sig,fake);
+    const r=await verify(M,[fake]);
+    $("presentOut").innerHTML+=`<div class="scroll" style="margin-top:12px"><table>
+      <tr><th>Abuse</th><th>Invent a discharge without asking the voucher</th></tr>
+      <tr><td>forged caveat</td><td class="cav">${esc(fake.caveats[0])}</td></tr>
+      <tr><td>binding recomputed correctly</td><td><span class="pill ok">yes</span> — binding alone is not the check</td></tr>
+      <tr><td>signed under</td><td class="m">a key the forger chose, not the one sealed for the voucher</td></tr>
+      <tr><td>result</td><td><span class="pill ${r.ok?"ok":"no"}">${r.ok?"accepted — DEFECT":"refused"}</span> ${esc(r.why||"")}</td></tr>
+      </table></div>
+      <p class="note" style="margin-top:10px">Two abuses, two separate checks. The first is caught
+      by the binding, the second by the sealed key, and neither required the service to ask the
+      voucher anything.</p>`;
+  }catch(e){ $("presentOut").innerHTML+=`<div class="err">${esc(e.message)}</div>`; }
+};
+
+if(new URLSearchParams(location.search).has("demo")){
+  await $("issue").onclick(); await $("try").onclick(); await $("disc").onclick();
+  await $("present").onclick(); await $("reuse").onclick(); await $("forge").onclick();
+}
+</script>
+</body>
+</html>
